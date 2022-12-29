@@ -1,0 +1,50 @@
+Procedure of installing MySQL Replica Status Script on Centos 7 and Zabbix Server & Agent version 3.0.32-1. 
+The script will be used on the Slave Node where MySQL Replication is running!
+
+1. Installing the corresponding zabbix-sender version compatible with your version of linux
+[root@slave ~]# wget https://repo.zabbix.com/zabbix/3.0/rhel/7/x86_64/zabbix-sender-3.0.32-1.el7.x86_64.rpm
+[root@slave ~]# rpm -ivh zabbix-sender-3.0.32-1.el7.x86_64.rpm
+
+2. Get the script from :
+https://github.com/pauldualsim/zabbix/blob/main/mysql-replica-status-check.sh
+ save it to the desired folder and change the values inside the script with your information
+( ex. Your Zabbix-server IP, hostname of agent where running the script, key , mysql login info )
+
+3. Give executable permissions 
+[root@slave ~]# chmod +x mysql-replica-status-check.sh 
+
+4. Setup the script to run at a desired time, for example every 24 hours, by using the command “crontab -e” 
+[root@slave ~]#  crontab -e
+ * */24 * * * /root/ mysql-replica-status-check.sh
+ 
+5. Make sure to reload the crond service using :
+[root@slave ~]# systemctl reload crond
+
+6. Go to Zabbix-server, login to the web interface and do the necessary steps required by the script to send information to the server 
+	a) Go to Configuration-> Hosts and click on the desired HOSTNAME (that you are using inside the script)  then click on Items and Create Item on the Top Right corner:
+	You need to add info in the first 4 rows:
+	-  Name : example -> Replica Status
+	-  Type : Zabbix trapper is required here
+	-  Key : example -> replica.status
+	- Type of information : select -> Numeric(float)
+	
+ 
+Make sure Enabled is marked and press on Update.
+ 
+	b) Press on Triggers, then click on Create Trigger on the Top Right corner:
+	- Name: example -> replica-status-check
+	- Expression: -> click Add on the right, a new window will open with options:
+- on the Item option click on Select and search for the name your entered on the previous step when you created an Item, used example was -> Replica Status
+		- on the Function option select -> last() – Last (most recent) T value
+		- press on Insert 
+	- Severity: -> select Warning 
+Make sure Enabled is marked and click on Update !
+ 
+The configuration is done ! 
+
+7. Test the script to see that alert is working by manually changing the ITEM_VALUE
+Example: /usr/bin/zabbix_sender -z 192.168.200.7 -s mysql-slave -k replica.status -o 0
+              	   /usr/bin/zabbix_sender -z 192.168.200.7 -s mysql-slave -k replica.status -o 1
+
+Done.
+
